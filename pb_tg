@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Play Back Music Mini App</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: var(--tg-theme-bg-color, #18181e);
+      --text-color: var(--tg-theme-text-color, #ffffff);
+      --hint-color: var(--tg-theme-hint-color, #a2a2ad);
+      --button-color: var(--tg-theme-button-color, #248ded);
+      --button-text: var(--tg-theme-button-text-color, #ffffff);
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .cover-art {
+      width: 240px;
+      height: 240px;
+      border-radius: 16px;
+      object-fit: cover;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      margin-top: 20px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 20px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--hint-color);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      background-color: var(--button-color);
+      color: var(--button-text);
+      border: none;
+      padding: 12px 28px;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn:active {
+      opacity: 0.8;
+    }
+
+    .links-container {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+      padding-bottom: 20px;
+    }
+
+    .link-card {
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="https://via.placeholder.com/300" alt="Cover" class="cover-art" id="cover">
+
+  <div class="title" id="track-title">Play Back — Latest Release</div>
+  <div class="subtitle" id="artist-name">Progressive Trance / House</div>
+
+  <audio id="audio-player" src=""></audio>
+
+  <div class="player-controls">
+    <button class="btn" id="play-btn" onclick="togglePlay()">Слушать</button>
+  </div>
+
+  <div class="links-container">
+    <a href="https://sites.google.com/view/playback-music" target="_blank" class="link-card">
+      <span>🌐 Официальный сайт</span>
+      <span>→</span>
+    </a>
+    <a href="https://promodj.com" target="_blank" class="link-card">
+      <span>🎧 PromoDJ</span>
+      <span>→</span>
+    </a>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Разворачивает Mini App на весь экран
+
+    const audio = document.getElementById('audio-player');
+    const playBtn = document.getElementById('play-btn');
+
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play();
+        playBtn.innerText = 'Пауза';
+      } else {
+        audio.pause();
+        playBtn.innerText = 'Слушать';
+      }
+    }
+  </script>
+</body>
+</html>
