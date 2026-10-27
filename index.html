@@ -4,14 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>PLAY BACK / Pickled Brain</title>
-  
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
+    /* === ЖЕСТКИЙ СБРОС ДЛЯ iOS === */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%; /* Критично для iOS WebView */
+      overflow-x: hidden;
+      overscroll-behavior-y: none; /* Запрет "пружинивания" */
+      -webkit-overflow-scrolling: touch;
+    }
+
     * { 
       box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
       -webkit-tap-highlight-color: transparent; 
     }
@@ -24,25 +32,18 @@
       --accent-pink: #ff007f;
       --text-main: #f0f0f5;
       --text-muted: #8a8a9e;
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      /* Эта переменная будет обновляться через JS с учетом iPhone safe area и MainButton */
+      --tg-bottom-offset: 0px; 
     }
 
     body { 
       background-color: var(--bg-dark); 
       color: var(--text-main); 
-      /* ИСПРАВЛЕНИЕ 1: Используем dvh для корректной высоты на мобильных */
-      min-height: 100dvh; 
-      height: 100dvh;
-      /* ИСПРАВЛЕНИЕ 2: Запрещаем "пружинивание" страницы на iOS */
-      overscroll-behavior-y: none; 
-      overflow-y: auto; 
-      overflow-x: hidden; 
+      /* Динамический отступ снизу = зона Telegram + высота нашего плеера + 20px запаса */
+      padding-bottom: calc(var(--tg-bottom-offset) + 130px); 
       position: relative;
-      /* ИСПРАВЛЕНИЕ 3: Увеличенный отступ снизу, чтобы плеер не перекрывал контент */
-      padding-bottom: calc(150px + var(--safe-bottom)); 
     }
 
-    /* === Анимированный фон === */
     body::before {
       content: '';
       position: fixed;
@@ -56,19 +57,13 @@
       pointer-events: none;
     }
 
-    @keyframes bgPulse {
-      0% { transform: scale(1); opacity: 0.6; }
-      100% { transform: scale(1.15); opacity: 1; }
-    }
-
+    @keyframes bgPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.15); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
     @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
     @keyframes equalize { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.3); } }
-    @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 15px rgba(184, 41, 227, 0.3); } 50% { box-shadow: 0 0 25px rgba(184, 41, 227, 0.6); } }
 
-    /* Header Nav */
     .navbar {
       display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
       background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border);
@@ -85,7 +80,6 @@
       box-shadow: 0 0 10px rgba(255, 0, 127, 0.3); cursor: pointer;
     }
 
-    /* Profile Header Banner */
     .profile-banner {
       position: relative; width: 100%; padding: 20px 16px;
       background: linear-gradient(135deg, rgba(10, 10, 15, 0.95) 0%, rgba(21, 5, 42, 0.9) 100%);
@@ -96,9 +90,7 @@
 
     .profile-avatar {
       width: 64px; height: 64px; border-radius: 50%; overflow: hidden;
-      border: 2px solid var(--accent-purple); 
-      box-shadow: 0 0 15px rgba(184, 41, 227, 0.3); 
-      flex-shrink: 0;
+      border: 2px solid var(--accent-purple); box-shadow: 0 0 15px rgba(184, 41, 227, 0.3); flex-shrink: 0;
       animation: float 6s ease-in-out infinite;
     }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -112,13 +104,9 @@
     .profile-detail svg { width: 12px; height: 12px; }
 
     .stats-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .badge { 
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); 
-      padding: 3px 8px; border-radius: 12px; font-size: 0.7rem;
-    }
+    .badge { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; }
     .badge b { color: var(--accent-purple); }
 
-    /* Layout & Controls */
     .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
     
     .controls-bar {
@@ -131,39 +119,24 @@
       flex: 1; padding: 8px 12px; background: rgba(0, 0, 0, 0.4);
       border: 1px solid var(--card-border); border-radius: 8px; color: #fff; font-size: 0.9rem; outline: none;
     }
-    .search-input:focus { border-color: var(--accent-purple); }
-
     .track-count { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 
-    .genre-tags { 
-      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; 
-      opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
-    }
+    .genre-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards; }
     .tag-btn {
-      background: rgba(20, 20, 32, 0.6); 
-      border: 1px solid var(--genre-color, var(--card-border)); 
-      color: var(--genre-color, var(--text-muted));
-      padding: 5px 10px; border-radius: 14px; font-size: 0.75rem; cursor: pointer; 
-      transition: all 0.2s ease;
-    }
-    .tag-btn::before {
-      content: ''; position: absolute; inset: 0; background: var(--genre-color, var(--accent-purple)); opacity: 0; transition: opacity 0.3s; z-index: -1; border-radius: 14px;
+      background: rgba(20, 20, 32, 0.6); border: 1px solid var(--genre-color, var(--card-border)); 
+      color: var(--genre-color, var(--text-muted)); padding: 5px 10px; border-radius: 14px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease;
     }
     .tag-btn.active { 
-      color: #0a0a0f; font-weight: 700; 
-      border-color: var(--genre-color, var(--accent-purple)); 
+      color: #0a0a0f; font-weight: 700; border-color: var(--genre-color, var(--accent-purple)); 
       box-shadow: 0 0 12px var(--genre-color, var(--accent-purple));
     }
-    .tag-btn.active::before { opacity: 1; }
 
-    /* Track Grid View */
     .tracks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     
     .track-card {
       background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 8px;
-      display: flex; flex-direction: column; gap: 8px; 
-      transition: all 0.3s ease; cursor: pointer;
-      opacity: 0;
+      display: flex; flex-direction: column; gap: 8px; transition: all 0.3s ease; cursor: pointer;
+      opacity: 0; width: 100%; /* Гарантируем, что карточка не вылезет за grid */
     }
     .track-card:active { transform: scale(0.97); }
 
@@ -175,13 +148,11 @@
     
     .play-btn-overlay {
       position: absolute; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity 0.3s ease;
+      display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;
     }
     .track-card.is-playing .play-btn-overlay { opacity: 1; }
     .play-circle { 
-      width: 36px; height: 36px; border-radius: 50%; 
-      display: flex; align-items: center; justify-content: center; 
+      width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
       transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .track-card.is-playing .play-circle { transform: scale(1); }
@@ -195,7 +166,7 @@
     .track-meta { font-size: 0.65rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 4px; }
     .track-genre { font-weight: 700; }
 
-    /* === INLINE EXPANDING PLAYER === */
+    /* Inline Player */
     .inline-player-wrapper {
       max-height: 0; overflow: hidden; width: 100%;
       transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
@@ -213,70 +184,66 @@
       box-shadow: 0 0 20px rgba(184, 41, 227, 0.15);
     }
     
-    .track-card.is-playing .card-cover-wrap {
-      width: 50px; height: 50px; flex-shrink: 0; border-radius: 6px;
-    }
+    .track-card.is-playing .card-cover-wrap { width: 50px; height: 50px; flex-shrink: 0; border-radius: 6px; }
     
     .track-card.is-playing .inline-player-wrapper {
       max-height: 120px;
       opacity: 1;
       margin-left: auto;
       flex: 1;
+      min-width: 0; /* Предотвращает распирание flex-контейнера на iOS */
     }
 
     .inline-player-title {
       font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; 
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-
-    .inline-player-iframe {
-      width: 100%; height: 90px; border: none; border-radius: 6px; background: #000;
-    }
+    .inline-player-iframe { width: 100%; height: 90px; border: none; border-radius: 6px; background: #000; }
 
     .playing-badge {
-      position: absolute; top: 4px; right: 4px;
-      color: #fff; font-size: 0.55rem; font-weight: 800; padding: 2px 5px;
-      border-radius: 4px; display: flex; align-items: center; gap: 3px;
-      z-index: 2; backdrop-filter: blur(4px);
+      position: absolute; top: 4px; right: 4px; color: #fff; font-size: 0.55rem; font-weight: 800; padding: 2px 5px;
+      border-radius: 4px; display: flex; align-items: center; gap: 3px; z-index: 2; backdrop-filter: blur(4px);
     }
     .equalizer { display: flex; gap: 1px; align-items: flex-end; height: 8px; }
-    .equalizer span {
-      width: 2px; background: #fff; border-radius: 1px;
-      animation: equalize 0.8s infinite ease-in-out;
-    }
+    .equalizer span { width: 2px; background: #fff; border-radius: 1px; animation: equalize 0.8s infinite ease-in-out; }
     .equalizer span:nth-child(1) { animation-delay: 0.1s; height: 60%; }
     .equalizer span:nth-child(2) { animation-delay: 0.3s; height: 100%; }
     .equalizer span:nth-child(3) { animation-delay: 0.5s; height: 40%; }
 
-    /* Sticky Bottom Player */
+    /* Fixed Bottom Player */
     .player-fixed-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; 
+      position: fixed; 
+      left: 0; right: 0; 
+      /* Ключевое исправление: прижимаем к безопасной зоне Telegram + 10px */
+      bottom: calc(var(--tg-bottom-offset) + 10px); 
       background: rgba(10, 10, 18, 0.98); backdrop-filter: blur(16px);
       border-top: 1px solid var(--card-border); z-index: 1000; padding: 8px 16px;
-      padding-bottom: calc(8px + var(--safe-bottom));
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transform: translateY(100%);
+      transform: translateY(150%); /* Спрятан по умолчанию */
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 -5px 30px rgba(0,0,0,0.6);
+      max-width: 1100px;
+      margin: 0 auto;
+      border-radius: 16px 16px 0 0;
     }
     .player-fixed-bar.is-active { transform: translateY(0); }
+    
     .player-title-display { 
       font-size: 0.8rem; font-weight: 700; color: var(--accent-purple); 
       margin-bottom: 4px; text-align: center; width: 100%; 
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
     }
     .player-iframe-container { 
-      width: 100%; max-width: 800px; height: 50px; border-radius: 6px; 
-      overflow: hidden; background: #000; 
+      width: 100%; max-width: 800px; height: 50px; border-radius: 6px; overflow: hidden; background: #000; 
     }
     iframe#promodjFrame { width: 100%; height: 100%; border: none; }
 
-    /* Desktop adjustments */
     @media (min-width: 769px) {
       .tracks-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
       .profile-banner { padding: 30px; }
       .profile-avatar { width: 90px; height: 90px; }
       .profile-name { font-size: 1.8rem; }
+      .player-fixed-bar { border-radius: 16px; bottom: calc(var(--tg-bottom-offset) + 20px); margin-bottom: 10px; }
     }
   </style>
 </head>
@@ -345,13 +312,25 @@
     tg.ready();
     tg.expand(); 
     
-    // ИСПРАВЛЕНИЕ 4: Запрещаем свайп вниз для закрытия приложения, чтобы не мешал скроллу
+    // Запрещаем свайп вниз для закрытия приложения (мешает скроллу на iOS)
     if (tg.disableVerticalSwipes) {
       tg.disableVerticalSwipes();
     }
 
     tg.setHeaderColor('#0a0a0f');
     tg.setBackgroundColor('#0a0a0f');
+
+    // === КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ДЛЯ IPHONE 15 ===
+    // Функция динамического расчета нижнего отступа с учетом Safe Area и MainButton
+    function updateLayout() {
+      // tg.safeAreaInset.bottom автоматически включает высоту Home Indicator И высоту MainButton, если она показана
+      const safeBottom = tg.safeAreaInset.bottom || 0;
+      document.documentElement.style.setProperty('--tg-bottom-offset', `${safeBottom}px`);
+    }
+
+    // Вызываем при загрузке и при любых изменениях вьюпорта (поворот, показ MainButton)
+    updateLayout();
+    tg.onEvent('viewportChanged', updateLayout);
 
     const TRACKS_DATA = [
       { id: "7986198", title: "Relaxium - Aqualandia (Dubstep Cover)", genre: "Dubstep", duration: "3:33" },
@@ -463,15 +442,18 @@
       tg.MainButton.setTextColor('#ffffff');
       tg.MainButton.show();
       
+      // Пересчитываем отступы, так как MainButton изменил safeAreaInset.bottom
+      updateLayout();
+      
       tg.MainButton.onClick(() => {
         tg.HapticFeedback.impactOccurred('light');
         tg.openLink(`https://promodj.com/pickled.brain/sets/${id}`);
       });
       
-      // ИСПРАВЛЕНИЕ 5: Плавный скролл к плееру при воспроизведении, чтобы он не перекрывался
+      // Скролл к карточке с учетом того, что она раскрылась
       setTimeout(() => {
         cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+      }, 200);
     }
 
     function renderTracks() {
